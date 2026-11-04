@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <libpayload.h>
 
+#include "base/device_tree.h"
 #include "base/init_funcs.h"
 #include "drivers/bus/i2c/mtk_i2c.h"
 #include "drivers/bus/i2s/mtk.h"
@@ -39,6 +40,20 @@
 
 #include "drivers/video/display.h"
 #include "drivers/video/mtk_ddp.h"
+
+static int fix_device_tree(DeviceTreeFixup *fixup, DeviceTree *tree)
+{
+	DeviceTreeNode *node = dt_find_compat(tree->root, "arm,gic-v3");
+
+	if (node)
+		dt_remove_prop(node, "mediatek,broken-save-restore-fw");
+
+	return 0;
+}
+
+static DeviceTreeFixup mtk_gic_fixup = {
+	.fixup = fix_device_tree
+};
 
 static SoundRouteComponent *get_speaker_amp(int *early_init)
 {
@@ -165,6 +180,9 @@ static int board_setup(void)
 	if (display_init_required())
 		display_set_ops(new_mtk_display(kukui_backlight_update,
 						0x14008000, 2));
+
+	list_insert_after(&mtk_gic_fixup.list_node, &device_tree_fixups);
+
 	return 0;
 }
 
