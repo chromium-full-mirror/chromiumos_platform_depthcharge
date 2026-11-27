@@ -636,6 +636,18 @@ static vb2_error_t vboot_reboot_ap_off(VbootEcOps *vbec)
 static vb2_error_t vboot_jump_to_rw(VbootEcOps *vbec)
 {
 	CrosEc *me = container_of(vbec, CrosEc, vboot);
+	struct ec_response_get_features features = {0};
+
+	if (ec_command(me, EC_CMD_GET_FEATURES, 0, NULL, 0, &features,
+		       sizeof(features)) >= 0 &&
+	    (features.flags[1] & EC_FEATURE_MASK_1(EC_FEATURE_EFS2))) {
+		printf("EC is EFS2 capable. Rebooting to switch to RW instead of jumping.\n");
+		if (ec_reboot(me, EC_REBOOT_COLD, 0) < 0) {
+			printf("Failed to reboot the EC.\n");
+			return VB2_ERROR_UNKNOWN;
+		}
+		power_off();
+	}
 
 	if (ec_reboot(me, EC_REBOOT_JUMP_RW, 0) < 0) {
 		printf("Failed to make the EC jump to RW.\n");
